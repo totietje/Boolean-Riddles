@@ -1,83 +1,74 @@
 package net.totietje.riddles
 
-sealed trait Claim {
+import net.totietje.riddles.Claim.One
+
+import scala.language.implicitConversions
+
+case class Claim(terms: Set[Set[String]]) extends AnyVal {
   /**
     * XOR
     */
-  def +(that: Claim): Claim = Claim.Xor(this, that)
+  def +(that: Claim): Claim = {
+    Claim(that.terms.diff(this.terms) ++ this.terms.diff(that.terms))
+  }
 
   /**
     * AND
     */
-  def *(that: Claim): Claim = Claim.And(this, that)
+  def *(that: Claim): Claim = Claim(
+    that.terms.flatMap { x =>
+      this.terms.map((_, x))
+    }.toList.map {
+      case (x, y) => x ++ y
+    }.groupBy(identity).collect {
+      case (term, list) if list.size % 2 == 1 => term
+    }.toSet
+  )
+
+  def and(that: Claim): Claim = this * that
+
+  def or(that: Claim): Claim = Claim.One + (Claim.One + this) * (Claim.One + that)
+
+  def xnor(that: Claim): Claim = (this + that).not
+
+  def xor(that: Claim): Claim = this + that
+
+  def not: Claim = Claim.One + this
 
   def simplified: Claim = this
+
+  def says(claim: Claim): Claim = One + this + claim
+
+  def wouldSay(claim: Claim): Claim = One + this + claim
+
+  def isLying: Claim = not
+
+  def isTruthful: Claim = this
+
+  def sameAs(claim: Claim): Claim = One + this + claim
+
+  def differentFrom(claim: Claim): Claim = this + claim
+
+  override def toString: String = {
+    if (terms.isEmpty) {
+      return "0"
+    }
+    terms.map {
+      case one if one.isEmpty => "1"
+      case vars => vars.mkString
+    }.mkString(" + ")
+  }
 }
 
 object Claim {
-  object One extends Claim {
-    override def *(that: Claim): Claim = that
+  val One = Claim(Set(Set()))
+  val Zero = Claim(Set())
+
+  implicit def toVar(name: String): Claim = Claim(Set(Set(name)))
+
+  def asOne(iterable: Iterable[Claim]): Claim = {
+    iterable.fold(One)(_ * _)
   }
 
-  object Zero extends Claim {
-    override def *(that: Claim): Claim = Zero
-
-    override def +(that: Claim): Claim = that
-
-    override def toString: String = "0"
-  }
-
-  case class Xor(a: Claim, b: Claim) extends Claim {
-    override def simplified: Claim = {
-      (a.simplified, b.simplified) match {
-        case (x, y) if x == y => Zero
-        case (Zero, x) => x
-        case (x, Zero) => x
-        case (Xor(x, y), z) => Xor(x, Xor(y, z)).simplified
-        case (term, xor@Xor(_, _)) => xor.without(term) match {
-          case Some(thing) => thing
-          case None => And(term, xor)
-        }
-        case (x, y) => And(x, y)
-      }
-    }
-
-    private def without(term: Claim): Option[Claim] = {
-      if (a == term) {
-        Some(b)
-      } else {
-        b match {
-          case xor@Xor(_, _) =>xor.without(term).map(Xor(a, _))
-          case x if x == term => Some(a)
-          case _ => None
-        }
-      }
-    }
-  }
-
-  case class And(a: Claim, b: Claim) extends Claim {
-    override def simplified: Claim = {
-      (a.simplified, b.simplified) match {
-        case (x, y) if x == y => x
-        case (Xor(x, y), z) => (x * z + y * z).simplified
-        case (z, Xor(x, y)) => (x * z + y * z).simplified
-        case (x, One) => x
-        case (One, x) => x
-        case (_, Zero) => Zero
-        case (Zero, _) => Zero
-        case (And(x, y), z) => And(x, And(y, z)).simplified
-        case (x, y@Var(_)) => And(x, y)
-        case (variable, and@And(_, _)) => if (and.implies(variable)) and else And(variable, and)
-      }
-    }
-
-    private def implies(variable: Claim): Boolean = {
-      a == variable || (b match {
-        case and@And(_, _) => and.implies(variable)
-        case b => b == variable
-      })
-    }
-  }
-
-  case class Var(name: String) extends Claim
+  def not(claim: Claim): Claim = claim.not
 }
