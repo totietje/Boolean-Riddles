@@ -38,6 +38,18 @@ case class Claim(terms: Set[Set[String]]) extends AnyVal {
     }.toSet
   )
 
+  def test(map: Map[String, Boolean]): Boolean = {
+    val trueTerms = terms.count { term =>
+      term.forall { variable =>
+        map.get(variable) match {
+          case Some(bool) => bool
+          case None => throw new IllegalArgumentException(s"Did not provide value for variable '$variable'")
+        }
+      }
+    }
+    trueTerms % 2 == 1
+  }
+
   // Subtraction and addition are equivalent in boolean algebra
   def -(that: Claim): Claim = this + that
 

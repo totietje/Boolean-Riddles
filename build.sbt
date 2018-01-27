@@ -14,3 +14,8 @@ scalacOptions := Seq(
   "-Yno-adapted-args",
   "-Ywarn-dead-code",
 )
+
+libraryDependencies ++= Seq(
+  "org.scalatest" % "scalatest_2.12" % "3.0.+" % "test",
+  "org.scalacheck" %% "scalacheck" % "1.13.+",
+)
