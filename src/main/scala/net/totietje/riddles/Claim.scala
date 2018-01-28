@@ -40,11 +40,13 @@ case class Claim(terms: Set[Set[String]]) extends AnyVal {
 
   def test(map: Map[String, Boolean]): Boolean = {
     val trueTerms = terms.count { term =>
-      term.forall { variable =>
-        map.get(variable) match {
-          case Some(bool) => bool
-          case None => throw new IllegalArgumentException(s"Did not provide value for variable '$variable'")
-        }
+      val converted = term.map(map.get)
+      if (converted.contains(Some(false))) {
+        false
+      } else if (converted.contains(None)) {
+        throw new IllegalArgumentException(s"Not enough variables provided.")
+      } else {
+        true
       }
     }
     trueTerms % 2 == 1
@@ -55,15 +57,13 @@ case class Claim(terms: Set[Set[String]]) extends AnyVal {
 
   def and(that: Claim): Claim = this * that
 
-  def or(that: Claim): Claim = Claim.One + (Claim.One + this) * (Claim.One + that)
+  def or(that: Claim): Claim = One + (One + this) * (One + that)
 
   def xnor(that: Claim): Claim = (this + that).not
 
   def xor(that: Claim): Claim = this + that
 
-  def not: Claim = Claim.One + this
-
-  def simplified: Claim = this
+  def not: Claim = One + this
 
   def says(claim: Claim): Claim = One + this + claim
 
@@ -95,9 +95,9 @@ object Claim {
   implicit def toVar(name: String): Claim = Claim(Set(Set(name)))
 
   /**
-    * Combines many claims into one equivalent one by multiplying them all together
+    * Combines many claims into one equivalent claim by ANDing them all together
     */
-  def asOne(iterable: Iterable[Claim]): Claim = {
+  def asOne(iterable: TraversableOnce[Claim]): Claim = {
     iterable.fold(One)(_ * _)
   }
 

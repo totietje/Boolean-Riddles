@@ -12,7 +12,7 @@ import Claim._
 
 val claims: Seq[Claim] = Seq(
   "A" says ("C" wouldSay "A".isLying),
-  "B" says ("A".isTruthful),
+  "B" says "A".isTruthful,
   "C" says "B".isLying,
   "D" says "C".isTruthful
 )
@@ -35,4 +35,8 @@ Finally, it factorises the expression:
 
     AB(C + 1)(D + 1)
 
-Yielding the solution A = 1, B = 1, C = 0, D = 0 - so A and B are truthful while C and D are liars.
+This yields the solution:
+
+    A = 1, B = 1, C = 0, D = 0
+
+So A and B are truthful while C and D are liars.

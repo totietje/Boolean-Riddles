@@ -38,7 +38,7 @@ object ClaimSolver {
   }
 
   // Solves multiple claims simultaneously by ANDing them all together first
-  def solve(claims: Iterable[Claim]): Map[String, Boolean] = {
+  def solve(claims: TraversableOnce[Claim]): Map[String, Boolean] = {
     solve(Claim.asOne(claims))
   }
 }

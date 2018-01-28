@@ -6,6 +6,7 @@ import org.scalacheck.Arbitrary
 import org.scalatest.FunSuite
 import org.scalatest.prop.PropertyChecks
 import org.scalatest.prop.TableDrivenPropertyChecks._
+import org.scalatest.Matchers._
 
 class Tests extends FunSuite with PropertyChecks{
   test("A claim XOR itself should be 0") {
@@ -105,9 +106,18 @@ class Tests extends FunSuite with PropertyChecks{
   }
 
   test("Testing a claim without necessary variables should throw exception") {
-    val claim: Claim = "A" + "B"
-    assertThrows[IllegalArgumentException] {
-      claim.test(Map("A" -> true))
+    forAll(Tests.variablesNotProvided) { (claim: Claim, map: Map[String, Boolean]) =>
+      assertThrows[IllegalArgumentException] {
+        claim.test(map)
+      }
+    }
+  }
+
+  test("Testing ANDs should not necessarily need all variables") {
+    forAll(Tests.variablesPartiallyProvided) { (claim: Claim, map: Map[String, Boolean]) =>
+      noException should be thrownBy {
+        claim.test(map)
+      }
     }
   }
 
@@ -124,14 +134,14 @@ class Tests extends FunSuite with PropertyChecks{
   }
 
   test("Solvable claims") {
-    forAll (Tests.solvableClaims) { (claim: Claim, map: Map[String, Boolean]) =>
+    forAll(Tests.solvableClaims) { (claim: Claim, map: Map[String, Boolean]) =>
       assert(ClaimSolver.solve(claim) == map)
       assert(claim.test(map))
     }
   }
 
   test("Unsolvable claims") {
-    forAll (Tests.unsolvableClaims) { (claim: Claim) =>
+    forAll(Tests.unsolvableClaims) { (claim: Claim) =>
       assertThrows[IllegalArgumentException] {
         ClaimSolver.solve(claim)
       }
@@ -160,5 +170,22 @@ object Tests {
     Zero,
     Claim(Set(Set("A"), Set("B"))),
     Claim(Set(Set("A"), Set("B"), Set())),
+    Claim(Set(Set("A"), Set("B", "A"), Set())),
+    Claim(Set(Set("A", "C"), Set("B", "A"), Set())),
+  )
+
+  val variablesNotProvided = Table(
+    ("claim", "test"),
+    (Claim(Set(Set("A"))), Map[String, Boolean]()),
+    (Claim(Set(Set("A"), Set("B"))), Map("A" -> true)),
+    (Claim(Set(Set("A", "B"))), Map("C" -> true)),
+  )
+
+  val variablesPartiallyProvided = Table(
+    ("claim", "test"),
+    (Claim(Set(Set("A", "B"))), Map("A" -> false)),
+    (Claim(Set(Set("A", "B"))), Map("B" -> false)),
+    (Claim(Set(Set("A", "B"), Set("A"))), Map("A" -> false)),
+    (Claim(Set(Set("A", "B"), Set())), Map("B" -> false)),
   )
 }
